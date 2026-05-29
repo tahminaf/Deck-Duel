@@ -60,7 +60,8 @@ export const handler = async (event) => {
     return { statusCode: 200, body: "Already finished" };
   }
 
-  const currentCard = deck.cards[myProgress.questionIndex];
+  const cards = room.gameCards || deck.cards;
+  const currentCard = cards[myProgress.questionIndex];
   if (!currentCard) return { statusCode: 200, body: "No card" };
 
   const isCorrect = answer.trim().toLowerCase() === currentCard.answer.trim().toLowerCase();
@@ -68,7 +69,7 @@ export const handler = async (event) => {
   // Update this player's progress
   const newScore = isCorrect ? myProgress.score + 1 : myProgress.score;
   const newQuestionIndex = myProgress.questionIndex + 1;
-  const playerFinished = newQuestionIndex >= deck.cards.length;
+  const playerFinished = newQuestionIndex >= cards.length;
 
   const updatedProgress = {
     ...myProgress,
@@ -80,7 +81,7 @@ export const handler = async (event) => {
 
   // Compute car position for this player: score / total as percentage
   // Cars always move — base position is progress through questions, boost for correct
-  const totalCards = deck.cards.length;
+  const totalCards = cards.length;
   const progressPct = (newQuestionIndex / totalCards) * 100;
   // Correct answers give full progress credit; wrong answers give 70% of the step
   const carPct = isCorrect
@@ -125,7 +126,7 @@ export const handler = async (event) => {
   // Next question for this player (if not finished)
   const nextQuestion = !playerFinished ? {
     index: newQuestionIndex,
-    question: deck.cards[newQuestionIndex].question,
+    question: cards[newQuestionIndex].question,
     totalQuestions: totalCards,
   } : null;
 

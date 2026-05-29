@@ -200,14 +200,14 @@ function RaceTrack({
   );
 }
 
-function TimerBar({ resetKey, active }: { resetKey: number; active: boolean }) {
+function TimerBar({ resetKey, active, duration }: { resetKey: number; active: boolean; duration: number }) {
   const [pct, setPct] = useState(100);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setPct(100);
     if (!active) return;
-    const total = 15000;
+    const total = duration * 1000;
     const start = Date.now();
     ref.current = setInterval(() => {
       const remaining = Math.max(0, 100 - ((Date.now() - start) / total) * 100);
@@ -249,6 +249,7 @@ export default function BattlePage() {
   const [winner, setWinner] = useState('');
   const [error, setError] = useState('');
   const [timerKey, setTimerKey] = useState(0);
+  const [timePerQuestion, setTimePerQuestion] = useState(15);
   const [feedback, setFeedback] = useState<{ correct: boolean; by: string } | null>(null);
   const [floatingReactions, setFloatingReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
 
@@ -271,6 +272,7 @@ export default function BattlePage() {
         setPlayers(data.players);
         setMaxPlayers(data.maxPlayers || 2);
         setTotalQuestions(data.totalQuestions || 0);
+        setTimePerQuestion(data.timePerQuestion || 15);
         setGameState('battle');
         setHasAnswered(false);
         setTimerKey(k => k + 1);
@@ -484,7 +486,7 @@ export default function BattlePage() {
               </p>
             </div>
 
-            <TimerBar resetKey={timerKey} active={!hasAnswered} />
+            <TimerBar resetKey={timerKey} active={!hasAnswered} duration={timePerQuestion} />
 
             {feedback && (
               <div className={`rounded-lg px-4 py-2.5 text-sm mb-3 border ${feedback.correct ? 'bg-sage-50 border-sage-100 text-sage-400' : 'bg-red-50 border-red-100 text-red-400'}`}>

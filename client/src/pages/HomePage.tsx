@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { decksApi, roomsApi } from '../lib/api';
+import { decksApi } from '../lib/api';
 
 interface Deck {
   deckId: string;
@@ -18,13 +18,11 @@ export default function HomePage() {
   const [tab, setTab] = useState<Tab>('decks');
   const [decks, setDecks] = useState<Deck[]>([]);
   const [decksLoading, setDecksLoading] = useState(true);
-  const [creatingRoom, setCreatingRoom] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState('');
   const [deckTitle, setDeckTitle] = useState('');
   const [cards, setCards] = useState([{ question: '', answer: '' }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState(2);
 
   useEffect(() => { fetchDecks(); }, []);
 
@@ -39,18 +37,8 @@ export default function HomePage() {
     }
   };
 
-  const handleCreateRoom = async (deck: Deck) => {
-    setCreatingRoom(deck.deckId);
-    setError('');
-    try {
-      const roomRes = await roomsApi.create(deck.deckId, username, maxPlayers);
-      navigate(`/battle/${roomRes.data.room.roomCode}`, {
-        state: { isHost: true, deck, maxPlayers },
-      });
-    } catch {
-      setError('Could not create room. Try again.');
-      setCreatingRoom(null);
-    }
+  const handleCreateRoom = (deck: Deck) => {
+    navigate('/game-settings', { state: { deck } });
   };
 
   const handleJoinRoom = () => {
@@ -121,19 +109,6 @@ export default function HomePage() {
         {/* MY DECKS */}
         {tab === 'decks' && (
           <div>
-            {/* Player count picker */}
-            <div className="flex items-center gap-3 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <span className="text-xs text-gray-400">Players per room</span>
-              <div className="flex gap-2 ml-auto">
-                {[2, 3, 4].map(n => (
-                  <button key={n} onClick={() => setMaxPlayers(n)}
-                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${maxPlayers === n ? 'bg-sage-400 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-sage-400'}`}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {decksLoading ? (
               <div className="text-sm text-gray-300 text-center py-16">Loading decks…</div>
             ) : decks.length === 0 ? (
@@ -154,9 +129,9 @@ export default function HomePage() {
                         className="text-xs text-gray-400 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
                         Study
                       </button>
-                      <button onClick={() => handleCreateRoom(deck)} disabled={creatingRoom === deck.deckId}
-                        className="text-xs bg-sage-400 hover:bg-sage-600 text-white rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 flex items-center gap-1">
-                        {creatingRoom === deck.deckId ? '…' : <>Race ({maxPlayers}p)</>}
+                      <button onClick={() => handleCreateRoom(deck)}
+                        className="text-xs bg-sage-400 hover:bg-sage-600 text-white rounded-lg px-3 py-1.5 transition-colors">
+                        Race →
                       </button>
                     </div>
                   </div>

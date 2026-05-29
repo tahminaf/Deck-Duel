@@ -98,16 +98,26 @@ export const handler = async (event) => {
       Key: { deckId: room.deckId },
     }));
 
-    const cards = deckRecord.Item?.cards || [];
+    let cards = deckRecord.Item?.cards || [];
+    if (room.shuffle) {
+      cards = [...cards].sort(() => Math.random() - 0.5);
+    }
     const firstQuestion = cards[0]?.question || '';
     const totalQuestions = cards.length;
+
+    const updateExpr = room.shuffle
+      ? "SET #s = :status, gameCards = :gameCards"
+      : "SET #s = :status";
+    const updateVals = room.shuffle
+      ? { ":status": "active", ":gameCards": cards }
+      : { ":status": "active" };
 
     await dynamo.send(new UpdateCommand({
       TableName: process.env.ROOMS_TABLE,
       Key: { roomId: room.roomId },
-      UpdateExpression: "SET #s = :status",
+      UpdateExpression: updateExpr,
       ExpressionAttributeNames: { "#s": "status" },
-      ExpressionAttributeValues: { ":status": "active" },
+      ExpressionAttributeValues: updateVals,
     }));
 
     const gameStartingPayload = {
@@ -116,6 +126,7 @@ export const handler = async (event) => {
       maxPlayers,
       firstQuestion,
       totalQuestions,
+      timePerQuestion: room.timePerQuestion || 15,
       message: "All players connected! Race starting...",
     };
 

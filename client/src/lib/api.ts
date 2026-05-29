@@ -30,8 +30,8 @@ export const decksApi = {
 };
 
 export const roomsApi = {
-  create: (deckId: string, createdBy: string, maxPlayers: number = 2) =>
-    api.post('/rooms', { deckId, createdBy, maxPlayers }),
+  create: (deckId: string, createdBy: string, maxPlayers: number = 2, shuffle: boolean = false, timePerQuestion: number = 15) =>
+    api.post('/rooms', { deckId, createdBy, maxPlayers, shuffle, timePerQuestion }),
 };
 
 export default api;
