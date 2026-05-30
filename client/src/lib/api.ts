@@ -14,10 +14,16 @@ api.interceptors.request.use((config) => {
 export const authApi = {
   signup: (email: string, password: string, username: string) =>
     api.post('/auth', { action: 'signup', email, password, username }),
+  confirmSignup: (email: string, code: string) =>
+    api.post('/auth', { action: 'confirmSignup', email, code }),
   login: (email: string, password: string) =>
     api.post('/auth', { action: 'login', email, password }),
   verifyMfa: (email: string, password: string, code: string, session: string) =>
     api.post('/auth', { action: 'verifyMfa', email, password, code, session }),
+  forgotPassword: (email: string) =>
+    api.post('/auth', { action: 'forgotPassword', email }),
+  confirmForgotPassword: (email: string, code: string, newPassword: string) =>
+    api.post('/auth', { action: 'confirmForgotPassword', email, code, newPassword }),
 };
 
 export const decksApi = {
