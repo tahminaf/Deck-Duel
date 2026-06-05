@@ -332,6 +332,7 @@ export default function BattlePage() {
   const [floatingReactions, setFloatingReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
 
   const [gameMode, setGameMode] = useState<'race' | 'wordle'>(state?.gameMode ?? 'race');
+  const [currentAnswer, setCurrentAnswer] = useState('');
   const [wordleGuesses, setWordleGuesses] = useState<WordleTile[][]>([]);
   const [wordleInput, setWordleInput] = useState('');
 
@@ -348,6 +349,7 @@ export default function BattlePage() {
       case 'JOINED':
         setPlayers(data.players);
         setMaxPlayers(data.maxPlayers || 2);
+        if (data.gameMode) setGameMode(data.gameMode);
         break;
 
       case 'GAME_STARTING': {
@@ -361,6 +363,7 @@ export default function BattlePage() {
         setTimerKey(k => k + 1);
         const q = state?.deck?.cards?.[0]?.question || data.firstQuestion || '';
         setCurrentQuestion(q);
+        setCurrentAnswer(data.firstAnswer || state?.deck?.cards?.[0]?.answer || '');
         if (state?.deck?.cards?.length) setTotalQuestions(state.deck.cards.length);
         const initPos: CarPositions = {};
         data.players.forEach((p: string) => { initPos[p] = 0; });
@@ -383,6 +386,7 @@ export default function BattlePage() {
             setPlayerFinished(true);
           } else if (data.nextQuestion) {
             setCurrentQuestion(data.nextQuestion.question);
+            setCurrentAnswer(data.nextQuestion.answer || state?.deck?.cards?.[data.nextQuestion.index]?.answer || '');
             setQuestionIndex(data.nextQuestion.index);
             setTimerKey(k => k + 1);
           }
@@ -443,8 +447,7 @@ export default function BattlePage() {
     setWordleInput('');
   }, [questionIndex]);
 
-  // Derive current wordle target from the deck card for this question
-  const wordleRawAnswer = state?.deck?.cards?.[questionIndex]?.answer ?? '';
+  const wordleRawAnswer = currentAnswer;
   const wordleAnswer = normalizeWord(wordleRawAnswer);
   const wordleTargetLen = wordleAnswer.length || 1;
   const wordleDone = hasAnswered;

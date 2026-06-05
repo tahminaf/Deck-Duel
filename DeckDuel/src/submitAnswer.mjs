@@ -127,6 +127,7 @@ export const handler = async (event) => {
   const nextQuestion = !playerFinished ? {
     index: newQuestionIndex,
     question: cards[newQuestionIndex].question,
+    answer: cards[newQuestionIndex].answer,
     totalQuestions: totalCards,
   } : null;
 

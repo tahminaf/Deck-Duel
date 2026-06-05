@@ -78,6 +78,7 @@ export const handler = async (event) => {
     roomCode,
     players: updatedPlayers,
     maxPlayers,
+    gameMode: room.gameMode || 'race',
   };
 
   const notified = new Set();
@@ -125,6 +126,7 @@ export const handler = async (event) => {
       players: updatedPlayers,
       maxPlayers,
       firstQuestion,
+      firstAnswer: cards[0]?.answer || '',
       totalQuestions,
       timePerQuestion: room.timePerQuestion || 15,
       gameMode: room.gameMode || 'race',
