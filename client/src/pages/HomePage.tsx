@@ -129,6 +129,10 @@ export default function HomePage() {
                         className="text-xs text-gray-400 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
                         Study
                       </button>
+                      <button onClick={() => navigate('/edit-deck', { state: { deck } })}
+                        className="text-xs text-gray-400 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+                        Edit
+                      </button>
                       <button onClick={() => handleCreateRoom(deck)}
                         className="text-xs bg-sage-400 hover:bg-sage-600 text-white rounded-lg px-3 py-1.5 transition-colors">
                         Race →

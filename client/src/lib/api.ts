@@ -35,6 +35,8 @@ export const decksApi = {
     api.get(`/decks?createdBy=${encodeURIComponent(createdBy)}`),
   getById: (deckId: string) =>
     api.get(`/decks/${deckId}`),
+  update: (deckId: string, title: string, cards: { question: string; answer: string }[]) =>
+    api.put(`/decks/${deckId}`, { title, cards }),
 };
 
 export const roomsApi = {

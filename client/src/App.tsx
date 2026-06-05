@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import BattlePage from './pages/BattlePage';
 import StudyPage from './pages/StudyPage';
 import GameSettingsPage from './pages/GameSettingsPage';
+import EditDeckPage from './pages/EditDeckPage';
 import type { JSX } from 'react';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -26,6 +27,9 @@ export default function App() {
       } />
       <Route path="/game-settings" element={
         <ProtectedRoute><GameSettingsPage /></ProtectedRoute>
+      } />
+      <Route path="/edit-deck" element={
+        <ProtectedRoute><EditDeckPage /></ProtectedRoute>
       } />
     </Routes>
   );
