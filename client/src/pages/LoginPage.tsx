@@ -46,7 +46,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [mfaCode, setMfaCode] = useState('');
-  const [session, setSession] = useState('');
+  const [mfaSession, setMfaSession] = useState('');
   const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -72,7 +72,7 @@ export default function LoginPage() {
         const res = await authApi.login(email, password);
         if (res.data.challenge === 'MFA_REQUIRED') {
           if (res.data.resolvedEmail) setEmail(res.data.resolvedEmail);
-          setSession(res.data.session);
+          setMfaSession(res.data.session);
           setStep('mfa');
         } else {
           setSession(res.data.tokens.accessToken, res.data.preferredUsername || email.split('@')[0]);
@@ -114,7 +114,7 @@ export default function LoginPage() {
   const handleMfa = async () => {
     setError(''); setLoading(true);
     try {
-      const res = await authApi.verifyMfa(email, password, mfaCode, session);
+      const res = await authApi.verifyMfa(email, password, mfaCode, mfaSession);
       setSession(res.data.tokens.accessToken, res.data.preferredUsername || email.split('@')[0]);
       navigate('/home', { replace: true });
     } catch (err: any) {
