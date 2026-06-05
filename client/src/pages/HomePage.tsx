@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { decksApi } from '../lib/api';
+import { clearSession } from '../lib/session';
 
 interface Deck {
   deckId: string;
@@ -84,13 +85,13 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <nav className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-        <span className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></span>
+        <button onClick={() => navigate('/home')} className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></button>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">{username}</span>
           <div className="w-8 h-8 rounded-full bg-sage-50 flex items-center justify-center text-sage-400 text-sm font-medium">
             {username[0].toUpperCase()}
           </div>
-          <button onClick={() => { localStorage.clear(); navigate('/'); }} className="text-xs text-gray-300 hover:text-gray-500 transition-colors">sign out</button>
+          <button onClick={() => { clearSession(); navigate('/'); }} className="text-xs text-gray-300 hover:text-gray-500 transition-colors">sign out</button>
         </div>
       </nav>
 

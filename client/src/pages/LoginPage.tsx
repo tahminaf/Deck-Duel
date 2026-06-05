@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../lib/api';
+import { setSession } from '../lib/session';
 
 type Mode = 'login' | 'signup';
 type Step = 'form' | 'verify' | 'mfa' | 'forgot' | 'resetPassword';
@@ -74,9 +75,8 @@ export default function LoginPage() {
           setSession(res.data.session);
           setStep('mfa');
         } else {
-          localStorage.setItem('accessToken', res.data.tokens.accessToken);
-          localStorage.setItem('username', res.data.preferredUsername || email.split('@')[0]);
-          navigate('/home');
+          setSession(res.data.tokens.accessToken, res.data.preferredUsername || email.split('@')[0]);
+          navigate('/home', { replace: true });
         }
       }
     } catch (err: any) {
@@ -115,9 +115,8 @@ export default function LoginPage() {
     setError(''); setLoading(true);
     try {
       const res = await authApi.verifyMfa(email, password, mfaCode, session);
-      localStorage.setItem('accessToken', res.data.tokens.accessToken);
-      localStorage.setItem('username', res.data.preferredUsername || email.split('@')[0]);
-      navigate('/home');
+      setSession(res.data.tokens.accessToken, res.data.preferredUsername || email.split('@')[0]);
+      navigate('/home', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid code.');
     } finally {

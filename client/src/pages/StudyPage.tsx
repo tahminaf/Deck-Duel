@@ -76,9 +76,9 @@ export default function StudyPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <nav className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-        <span className="font-serif text-xl tracking-tight">
+        <button onClick={() => navigate('/home')} className="font-serif text-xl tracking-tight">
           Deck<span className="text-sage-400">Duel</span>
-        </span>
+        </button>
         <button
           onClick={() => navigate('/home')}
           className="text-xs text-gray-300 hover:text-gray-500 transition-colors"

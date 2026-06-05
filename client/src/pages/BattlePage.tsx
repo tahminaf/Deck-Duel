@@ -486,7 +486,7 @@ export default function BattlePage() {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <nav className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-          <span className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></span>
+          <button onClick={() => navigate('/home')} className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></button>
           <button onClick={() => navigate('/home')} className="text-xs text-gray-300 hover:text-gray-500 transition-colors">← leave</button>
         </nav>
         <div className="flex flex-1 items-center justify-center px-4">
@@ -525,8 +525,9 @@ export default function BattlePage() {
     const isWinner = winner === username;
     return (
       <div className="min-h-screen bg-white flex flex-col">
-        <nav className="border-b border-gray-100 px-6 py-4">
-          <span className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></span>
+        <nav className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+          <button onClick={() => navigate('/home')} className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></button>
+          <button onClick={() => navigate('/home')} className="text-xs text-gray-300 hover:text-gray-500 transition-colors">← home</button>
         </nav>
         <div className="flex flex-1 items-center justify-center px-4">
           <div className="w-full max-w-lg text-center">
@@ -573,7 +574,7 @@ export default function BattlePage() {
         ))}
 
         <nav className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-          <span className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></span>
+          <button onClick={() => navigate('/home')} className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></button>
           <span className="text-xs text-gray-300 uppercase tracking-widest">Room {roomCode}</span>
         </nav>
 
