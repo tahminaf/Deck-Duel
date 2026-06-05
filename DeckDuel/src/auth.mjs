@@ -2,6 +2,7 @@ import {
   CognitoIdentityProviderClient,
   SignUpCommand,
   ConfirmSignUpCommand,
+  ResendConfirmationCodeCommand,
   InitiateAuthCommand,
   AdminGetUserCommand,
   ListUsersCommand,
@@ -51,6 +52,15 @@ export const handler = async (event) => {
         ],
       }));
       return respond(201, { message: "Account created! Check your email to verify." });
+    }
+
+    // ---- RESEND VERIFICATION CODE ----
+    if (action === "resendVerification") {
+      await client.send(new ResendConfirmationCodeCommand({
+        ClientId: CLIENT_ID,
+        Username: email,
+      }));
+      return respond(200, { message: "Verification code resent." });
     }
 
     // ---- CONFIRM SIGNUP ----

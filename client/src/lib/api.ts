@@ -16,6 +16,8 @@ export const authApi = {
     api.post('/auth', { action: 'signup', email, password, username }),
   confirmSignup: (email: string, code: string) =>
     api.post('/auth', { action: 'confirmSignup', email, code }),
+  resendVerification: (email: string) =>
+    api.post('/auth', { action: 'resendVerification', email }),
   login: (email: string, password: string) =>
     api.post('/auth', { action: 'login', email, password }),
   verifyMfa: (email: string, password: string, code: string, session: string) =>
@@ -36,8 +38,8 @@ export const decksApi = {
 };
 
 export const roomsApi = {
-  create: (deckId: string, createdBy: string, maxPlayers: number = 2, shuffle: boolean = false, timePerQuestion: number = 15) =>
-    api.post('/rooms', { deckId, createdBy, maxPlayers, shuffle, timePerQuestion }),
+  create: (deckId: string, createdBy: string, maxPlayers: number = 2, shuffle: boolean = false, timePerQuestion: number = 15, gameMode: 'race' | 'wordle' = 'race') =>
+    api.post('/rooms', { deckId, createdBy, maxPlayers, shuffle, timePerQuestion, gameMode }),
 };
 
 export default api;

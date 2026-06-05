@@ -20,7 +20,7 @@ const respond = (statusCode, body) => ({
 export const handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
-    const { deckId, createdBy, maxPlayers = 2, shuffle = false, timePerQuestion = 15 } = body;
+    const { deckId, createdBy, maxPlayers = 2, shuffle = false, timePerQuestion = 15, gameMode = 'race' } = body;
 
     if (!deckId || !createdBy) {
       return respond(400, { error: "deckId and createdBy are required" });
@@ -33,6 +33,7 @@ export const handler = async (event) => {
       createdBy,
       maxPlayers: Math.min(Math.max(parseInt(maxPlayers), 2), 4),
       shuffle: Boolean(shuffle),
+      gameMode: gameMode === 'wordle' ? 'wordle' : 'race',
       timePerQuestion: Math.min(Math.max(parseInt(timePerQuestion), 5), 120),
       players: [createdBy],
       status: "waiting",

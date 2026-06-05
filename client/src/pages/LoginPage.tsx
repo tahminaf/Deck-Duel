@@ -5,6 +5,35 @@ import { authApi } from '../lib/api';
 type Mode = 'login' | 'signup';
 type Step = 'form' | 'verify' | 'mfa' | 'forgot' | 'resetPassword';
 
+const pwdChecks = (pwd: string) => ({
+  length: pwd.length >= 8,
+  upper: /[A-Z]/.test(pwd),
+  lower: /[a-z]/.test(pwd),
+  number: /[0-9]/.test(pwd),
+});
+
+const isStrong = (pwd: string) => Object.values(pwdChecks(pwd)).every(Boolean);
+
+function PasswordStrength({ password }: { password: string }) {
+  const checks = pwdChecks(password);
+  const items = [
+    { ok: checks.length, label: 'At least 8 characters' },
+    { ok: checks.upper,  label: 'One uppercase letter' },
+    { ok: checks.lower,  label: 'One lowercase letter' },
+    { ok: checks.number, label: 'One number' },
+  ];
+  return (
+    <div className="mb-2 space-y-1">
+      {items.map(({ ok, label }) => (
+        <div key={label} className={`flex items-center gap-1.5 text-xs transition-colors ${ok ? 'text-sage-400' : 'text-red-400'}`}>
+          <span>{ok ? '✓' : '○'}</span>
+          <span>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('login');
@@ -12,21 +41,24 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [session, setSession] = useState('');
   const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const switchMode = (next: Mode) => {
     setMode(next);
-    setError('');
-    setSuccess('');
+    setError(''); setSuccess('');
+    setPassword(''); setConfirmPassword('');
   };
 
   const handleSubmit = async () => {
@@ -58,14 +90,24 @@ export default function LoginPage() {
     setError(''); setLoading(true);
     try {
       await authApi.confirmSignup(email, verifyCode);
-      setStep('form');
-      setMode('login');
-      setVerifyCode('');
+      setStep('form'); setMode('login'); setVerifyCode('');
       setSuccess('Email verified! You can now sign in.');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid code.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setError(''); setSuccess(''); setResending(true);
+    try {
+      await authApi.resendVerification(email);
+      setSuccess('Code resent — check your email.');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not resend code.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -96,14 +138,24 @@ export default function LoginPage() {
     }
   };
 
+  const handleResendResetCode = async () => {
+    setError(''); setSuccess(''); setResending(true);
+    try {
+      await authApi.forgotPassword(email);
+      setSuccess('Code resent — check your email.');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not resend code.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleResetPassword = async () => {
     setError(''); setLoading(true);
     try {
       await authApi.confirmForgotPassword(email, resetCode, newPassword);
-      setStep('form');
-      setMode('login');
-      setResetCode('');
-      setNewPassword('');
+      setStep('form'); setMode('login');
+      setResetCode(''); setNewPassword(''); setConfirmNewPassword('');
       setSuccess('Password reset! You can now sign in.');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid code or password.');
@@ -119,6 +171,8 @@ export default function LoginPage() {
   const SuccessBox = ({ msg }: { msg: string }) => (
     <div className="bg-sage-50 border border-sage-100 text-sage-400 text-sm rounded-lg px-4 py-3 mb-4">{msg}</div>
   );
+
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400";
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -138,11 +192,12 @@ export default function LoginPage() {
               <p className="text-sm text-gray-400 mb-8">We sent a verification code to <strong>{email}</strong></p>
 
               {error && <ErrorBox msg={error} />}
+              {success && <SuccessBox msg={success} />}
 
               <div className="mb-6">
                 <label className="text-xs text-gray-400 block mb-1">Verification code</label>
                 <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400 font-serif text-center text-2xl tracking-widest"
+                  className={`${inputCls} font-serif text-center text-2xl tracking-widest`}
                   value={verifyCode}
                   onChange={e => setVerifyCode(e.target.value)}
                   placeholder="000000"
@@ -154,10 +209,16 @@ export default function LoginPage() {
                 className="w-full bg-sage-400 hover:bg-sage-600 text-white rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
                 {loading ? 'Verifying…' : 'Verify email →'}
               </button>
-              <button onClick={() => { setStep('form'); setError(''); }}
-                className="w-full mt-3 text-sm text-gray-400 hover:text-sage-400 transition-colors">
-                ← Back
-              </button>
+              <div className="flex justify-between mt-3">
+                <button onClick={() => { setStep('form'); setError(''); setSuccess(''); }}
+                  className="text-sm text-gray-400 hover:text-sage-400 transition-colors">
+                  ← Back
+                </button>
+                <button onClick={handleResendVerification} disabled={resending}
+                  className="text-sm text-gray-400 hover:text-sage-400 transition-colors disabled:opacity-50">
+                  {resending ? 'Sending…' : 'Resend code'}
+                </button>
+              </div>
             </>
           )}
 
@@ -172,7 +233,7 @@ export default function LoginPage() {
               <div className="mb-6">
                 <label className="text-xs text-gray-400 block mb-1">6-digit code</label>
                 <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400 font-serif text-center text-2xl tracking-widest"
+                  className={`${inputCls} font-serif text-center text-2xl tracking-widest`}
                   value={mfaCode}
                   onChange={e => setMfaCode(e.target.value)}
                   placeholder="000000"
@@ -197,13 +258,8 @@ export default function LoginPage() {
 
               <div className="mb-6">
                 <label className="text-xs text-gray-400 block mb-1">Email or username</label>
-                <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com or tahmina"
-                  autoComplete="email"
-                />
+                <input className={inputCls} value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com or tahmina" autoComplete="email" />
               </div>
 
               <button onClick={handleForgotPassword} disabled={loading}
@@ -224,37 +280,51 @@ export default function LoginPage() {
               <p className="text-sm text-gray-400 mb-8">Enter the code sent to <strong>{email}</strong></p>
 
               {error && <ErrorBox msg={error} />}
+              {success && <SuccessBox msg={success} />}
 
               <div className="mb-4">
                 <label className="text-xs text-gray-400 block mb-1">Reset code</label>
                 <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400 font-serif text-center text-2xl tracking-widest"
-                  value={resetCode}
-                  onChange={e => setResetCode(e.target.value)}
-                  placeholder="000000"
-                  maxLength={6}
+                  className={`${inputCls} font-serif text-center text-2xl tracking-widest`}
+                  value={resetCode} onChange={e => setResetCode(e.target.value)}
+                  placeholder="000000" maxLength={6}
                 />
+              </div>
+
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 block mb-1">New password</label>
+                <PasswordStrength password={newPassword} />
+                <input className={inputCls} type="password" value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="••••••••" autoComplete="new-password" />
               </div>
 
               <div className="mb-6">
-                <label className="text-xs text-gray-400 block mb-1">New password</label>
-                <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400"
-                  type="password"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
+                <label className="text-xs text-gray-400 block mb-1">Confirm new password</label>
+                <input className={inputCls} type="password" value={confirmNewPassword}
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  placeholder="••••••••" autoComplete="new-password" />
+                {confirmNewPassword && newPassword !== confirmNewPassword && (
+                  <p className="text-xs text-red-400 mt-1">Passwords don't match</p>
+                )}
               </div>
 
-              <button onClick={handleResetPassword} disabled={loading}
+              <button
+                onClick={handleResetPassword}
+                disabled={loading || !isStrong(newPassword) || newPassword !== confirmNewPassword}
                 className="w-full bg-sage-400 hover:bg-sage-600 text-white rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
                 {loading ? 'Resetting…' : 'Set new password →'}
               </button>
-              <button onClick={() => { setStep('forgot'); setError(''); }}
-                className="w-full mt-3 text-sm text-gray-400 hover:text-sage-400 transition-colors">
-                ← Back
-              </button>
+              <div className="flex justify-between mt-3">
+                <button onClick={() => { setStep('forgot'); setError(''); setSuccess(''); }}
+                  className="text-sm text-gray-400 hover:text-sage-400 transition-colors">
+                  ← Back
+                </button>
+                <button onClick={handleResendResetCode} disabled={resending}
+                  className="text-sm text-gray-400 hover:text-sage-400 transition-colors disabled:opacity-50">
+                  {resending ? 'Sending…' : 'Resend code'}
+                </button>
+              </div>
             </>
           )}
 
@@ -274,13 +344,8 @@ export default function LoginPage() {
               {mode === 'signup' && (
                 <div className="mb-4">
                   <label className="text-xs text-gray-400 block mb-1">Username</label>
-                  <input
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    placeholder="tahmina"
-                    autoComplete="username"
-                  />
+                  <input className={inputCls} value={username} onChange={e => setUsername(e.target.value)}
+                    placeholder="tahmina" autoComplete="username" />
                 </div>
               )}
 
@@ -289,27 +354,37 @@ export default function LoginPage() {
                   {mode === 'login' ? 'Email or username' : 'Email'}
                 </label>
                 <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400"
+                  className={inputCls}
                   type={mode === 'signup' ? 'email' : 'text'}
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  value={email} onChange={e => setEmail(e.target.value)}
                   placeholder={mode === 'login' ? 'you@example.com or tahmina' : 'you@example.com'}
                   autoComplete="email"
                 />
               </div>
 
-              <div className="mb-2">
+              <div className="mb-4">
                 <label className="text-xs text-gray-400 block mb-1">Password</label>
+                {mode === 'signup' && <PasswordStrength password={password} />}
                 <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sage-400"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  className={inputCls}
+                  type="password" value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                  onKeyDown={e => e.key === 'Enter' && mode === 'login' && handleSubmit()}
                 />
               </div>
+
+              {mode === 'signup' && (
+                <div className="mb-6">
+                  <label className="text-xs text-gray-400 block mb-1">Confirm password</label>
+                  <input className={inputCls} type="password" value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••" autoComplete="new-password" />
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-red-400 mt-1">Passwords don't match</p>
+                  )}
+                </div>
+              )}
 
               {mode === 'login' && (
                 <div className="mb-6 text-right">
@@ -320,9 +395,9 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {mode === 'signup' && <div className="mb-6" />}
-
-              <button onClick={handleSubmit} disabled={loading}
+              <button
+                onClick={handleSubmit}
+                disabled={loading || (mode === 'signup' && (!isStrong(password) || password !== confirmPassword))}
                 className="w-full bg-sage-400 hover:bg-sage-600 text-white rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50">
                 {loading ? 'Loading…' : mode === 'login' ? 'Sign in' : 'Create account'}
               </button>

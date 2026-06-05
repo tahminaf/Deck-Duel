@@ -6,6 +6,84 @@ type GameState = 'lobby' | 'battle' | 'finished';
 interface Scores { [username: string]: number }
 interface CarPositions { [username: string]: number }
 
+// ── Wordle types & helpers ────────────────────────────────────────────────────
+type TileStatus = 'empty' | 'tbd' | 'correct' | 'present' | 'absent';
+interface WordleTile { letter: string; status: TileStatus }
+
+const TILE_COLORS: Record<TileStatus, { bg: string; border: string; color: string }> = {
+  empty:   { bg: 'white',   border: '#d1d5db', color: '#111' },
+  tbd:     { bg: 'white',   border: '#374151', color: '#111' },
+  correct: { bg: '#4a7c59', border: '#4a7c59', color: 'white' },
+  present: { bg: '#d97706', border: '#d97706', color: 'white' },
+  absent:  { bg: '#9ca3af', border: '#9ca3af', color: 'white' },
+};
+
+const MAX_WORDLE_GUESSES = 6;
+
+function normalizeWord(s: string) {
+  return s.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function evaluateGuess(guess: string, answer: string): WordleTile[] {
+  const g = normalizeWord(guess);
+  const a = normalizeWord(answer);
+  const tiles: WordleTile[] = Array.from({ length: a.length }, (_, i) => ({
+    letter: g[i] ?? '',
+    status: 'absent' as TileStatus,
+  }));
+  const used = new Array(a.length).fill(false);
+  for (let i = 0; i < a.length; i++) {
+    if (g[i] === a[i]) { tiles[i].status = 'correct'; used[i] = true; }
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (tiles[i].status === 'correct') continue;
+    for (let j = 0; j < a.length; j++) {
+      if (!used[j] && g[i] === a[j]) { tiles[i].status = 'present'; used[j] = true; break; }
+    }
+  }
+  return tiles;
+}
+
+function WordleGrid({ submitted, currentInput, targetLen, done }: {
+  submitted: WordleTile[][];
+  currentInput: string;
+  targetLen: number;
+  done: boolean;
+}) {
+  const ts = Math.min(44, Math.max(20, Math.floor(280 / targetLen)));
+  const rows: WordleTile[][] = [...submitted];
+  if (!done && submitted.length < MAX_WORDLE_GUESSES) {
+    rows.push(Array.from({ length: targetLen }, (_, i) => ({
+      letter: currentInput[i] ?? '',
+      status: (currentInput[i] ? 'tbd' : 'empty') as TileStatus,
+    })));
+  }
+  while (rows.length < MAX_WORDLE_GUESSES) {
+    rows.push(Array(targetLen).fill({ letter: '', status: 'empty' as TileStatus }));
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', userSelect: 'none' }}>
+      {rows.map((row, ri) => (
+        <div key={ri} style={{ display: 'flex', gap: 4 }}>
+          {row.map((tile, ci) => {
+            const { bg, border, color } = TILE_COLORS[tile.status];
+            return (
+              <div key={ci} style={{
+                width: ts, height: ts, border: `2px solid ${border}`,
+                background: bg, color, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: ts * 0.42, fontWeight: 700,
+                textTransform: 'uppercase', borderRadius: 4, transition: 'all 0.2s',
+              }}>
+                {tile.letter}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // SVG car colors per lane
 const LANE_COLORS = ['#4a7c59', '#5b8dd9', '#e07b54', '#9b59b6'];
 
@@ -253,6 +331,10 @@ export default function BattlePage() {
   const [feedback, setFeedback] = useState<{ correct: boolean; by: string } | null>(null);
   const [floatingReactions, setFloatingReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
 
+  const [gameMode, setGameMode] = useState<'race' | 'wordle'>(state?.gameMode ?? 'race');
+  const [wordleGuesses, setWordleGuesses] = useState<WordleTile[][]>([]);
+  const [wordleInput, setWordleInput] = useState('');
+
   const inputRef = useRef<HTMLInputElement>(null);
   const reactionIdRef = useRef(0);
 
@@ -273,6 +355,7 @@ export default function BattlePage() {
         setMaxPlayers(data.maxPlayers || 2);
         setTotalQuestions(data.totalQuestions || 0);
         setTimePerQuestion(data.timePerQuestion || 15);
+        if (data.gameMode) setGameMode(data.gameMode);
         setGameState('battle');
         setHasAnswered(false);
         setTimerKey(k => k + 1);
@@ -354,6 +437,47 @@ export default function BattlePage() {
     setTimeout(() => setFloatingReactions(prev => prev.filter(r => r.id !== id)), 1500);
   };
 
+  // Reset wordle state on each new question
+  useEffect(() => {
+    setWordleGuesses([]);
+    setWordleInput('');
+  }, [questionIndex]);
+
+  // Derive current wordle target from the deck card for this question
+  const wordleRawAnswer = state?.deck?.cards?.[questionIndex]?.answer ?? '';
+  const wordleAnswer = normalizeWord(wordleRawAnswer);
+  const wordleTargetLen = wordleAnswer.length || 1;
+  const wordleDone = hasAnswered;
+
+  const submitWordleGuess = useCallback(() => {
+    if (wordleInput.length !== wordleTargetLen || hasAnswered || playerFinished) return;
+    const result = evaluateGuess(wordleInput, wordleAnswer);
+    const isCorrect = normalizeWord(wordleInput) === wordleAnswer;
+    setWordleGuesses(prev => {
+      const next = [...prev, result];
+      if (isCorrect || next.length >= MAX_WORDLE_GUESSES) {
+        send({ action: 'submitAnswer', answer: isCorrect ? wordleRawAnswer : wordleInput });
+        setHasAnswered(true);
+      }
+      return next;
+    });
+    setWordleInput('');
+  }, [wordleInput, wordleTargetLen, wordleAnswer, wordleRawAnswer, hasAnswered, playerFinished, send]);
+
+  // Global keyboard capture for wordle mode
+  useEffect(() => {
+    if (gameMode !== 'wordle' || gameState !== 'battle' || hasAnswered || playerFinished) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { submitWordleGuess(); }
+      else if (e.key === 'Backspace') { setWordleInput(p => p.slice(0, -1)); }
+      else if (/^[a-z]$/i.test(e.key)) {
+        setWordleInput(p => p.length < wordleTargetLen ? p + e.key.toLowerCase() : p);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [gameMode, gameState, hasAnswered, playerFinished, submitWordleGuess, wordleTargetLen]);
+
   // ── LOBBY ──
   if (gameState === 'lobby') {
     return (
@@ -426,7 +550,96 @@ export default function BattlePage() {
     );
   }
 
-  // ── BATTLE ──
+  // ── BATTLE (wordle mode) ──
+  if (gameMode === 'wordle') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col relative overflow-hidden">
+        <style>{`
+          @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+          }
+        `}</style>
+
+        {floatingReactions.map(r => (
+          <div key={r.id} style={{
+            position: 'fixed', bottom: 200, left: `${r.x}%`,
+            fontSize: 30, animation: 'floatUp 1.4s ease-out forwards',
+            pointerEvents: 'none', zIndex: 50,
+          }}>{r.emoji}</div>
+        ))}
+
+        <nav className="border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+          <span className="font-serif text-xl tracking-tight">Deck<span className="text-sage-400">Duel</span></span>
+          <span className="text-xs text-gray-300 uppercase tracking-widest">Room {roomCode}</span>
+        </nav>
+
+        <div className="flex flex-1 flex-col items-center max-w-sm mx-auto w-full px-4 py-8">
+          {!playerFinished ? (
+            <>
+              <div className="text-xs text-gray-300 uppercase tracking-widest mb-4 self-start">
+                Question {questionIndex + 1}{totalQuestions > 0 ? ` of ${totalQuestions}` : ''}
+              </div>
+
+              <div className="border border-gray-100 rounded-xl p-5 mb-4 bg-gray-50 w-full">
+                <p className="font-serif text-lg text-gray-900 leading-relaxed">
+                  {currentQuestion || 'Waiting…'}
+                </p>
+              </div>
+
+              <TimerBar resetKey={timerKey} active={!hasAnswered} duration={timePerQuestion} />
+
+              {feedback && (
+                <div className={`rounded-lg px-4 py-2.5 text-sm mb-4 border w-full ${feedback.correct ? 'bg-sage-50 border-sage-100 text-sage-400' : 'bg-red-50 border-red-100 text-red-400'}`}>
+                  {feedback.correct ? `✓ ${feedback.by} got it` : `✗ ${feedback.by} got it wrong — keep going`}
+                </div>
+              )}
+
+              {hasAnswered && !feedback && (
+                <div className="rounded-lg px-4 py-2.5 text-sm mb-4 bg-gray-50 border border-gray-100 text-gray-400 w-full">
+                  Checking your answer…
+                </div>
+              )}
+
+              <div className="mb-4">
+                <WordleGrid
+                  submitted={wordleGuesses}
+                  currentInput={wordleInput}
+                  targetLen={wordleTargetLen}
+                  done={wordleDone}
+                />
+              </div>
+
+              {!hasAnswered && (
+                <p className="text-xs text-gray-300 text-center mb-6">
+                  {wordleTargetLen} letter{wordleTargetLen !== 1 ? 's' : ''} · Enter to guess · Backspace to delete
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="border border-sage-100 rounded-xl p-5 mb-4 bg-sage-50 text-center w-full">
+              <div className="font-serif text-xl text-sage-400 mb-1">You finished!</div>
+              <p className="text-sm text-gray-400">Waiting for other players…</p>
+            </div>
+          )}
+
+          {/* Reactions */}
+          <div className="flex gap-2 justify-center mt-auto">
+            {['🔥', '😭', '💀', '👏', '⚡'].map(emoji => (
+              <button key={emoji} onClick={() => sendReaction(emoji)}
+                className="bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-full px-3 py-1.5 text-base transition-all hover:scale-110">
+                {emoji}
+              </button>
+            ))}
+          </div>
+
+          {error && <div className="mt-3 bg-red-50 border border-red-100 text-red-500 text-sm rounded-lg px-4 py-3 w-full">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── BATTLE (standard race mode) ──
   return (
     <div className="min-h-screen bg-white flex flex-col relative overflow-hidden">
       <style>{`

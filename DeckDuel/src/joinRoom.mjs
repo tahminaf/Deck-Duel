@@ -127,6 +127,7 @@ export const handler = async (event) => {
       firstQuestion,
       totalQuestions,
       timePerQuestion: room.timePerQuestion || 15,
+      gameMode: room.gameMode || 'race',
       message: "All players connected! Race starting...",
     };
 
